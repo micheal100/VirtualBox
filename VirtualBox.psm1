@@ -1,6 +1,5 @@
 ﻿
-function Get-VirtualBox
-{
+function Get-VirtualBox{
     <#
             .SYNOPSIS
             Get the VirtualBox service
@@ -53,8 +52,7 @@ function Get-VirtualBox
 }
 
 
-function Get-VirtualBoxMachine
-{
+function Get-VirtualBoxMachine{
     <#
             .SYNOPSIS
             Get a VirtualBox virtual machine
@@ -98,20 +96,22 @@ function Get-VirtualBoxMachine
         #Name of the VMs
         [Parameter(ValueFromPipeline = $true,
                 ValueFromPipelineByPropertyName = $true, 
-        Position = 0)]
+        Position = 0,
+        ParameterSetName = 'Name')]
         [ValidateNotNullOrEmpty()]
         [string[]]
         $Name,
         
         [Parameter(ParameterSetName = 'All')]
         [switch]$All,
-    
-        [Parameter(ParameterSetName = 'State')]
+        
+        #Don't set default, only filter if needed, otherwise show all
         [ValidateSet('Stopped','Running','Saved','Teleported','Aborted',
                 'Paused','Stuck','Snapshotting','Starting','Stopping',
                 'Restoring','TeleportingPausedVM','TeleportingIn','FaultTolerantSync',
         'DeletingSnapshotOnline','DeletingSnapshot','SettingUp')]
-        [string]$State = 'Running',
+        [string]$State,
+        
         [switch]$IncludeRaw
 
 
@@ -135,16 +135,31 @@ function Get-VirtualBoxMachine
             foreach ($item in $Name) 
             {
                 Write-Verbose -Message "Finding $item"
-                $vmachines += $vbox.FindMachine($item)
+                try
+                {
+                  # Content
+                  $vmachines += $vbox.FindMachine($item)
+                }
+                catch
+                {
+                  "Error was $_"
+                  $line = $_.InvocationInfo.ScriptLineNumber
+                  "Error was in Line $line"
+                }
+                
+                
+                
             }
-        } #if $name
-        elseif ($All) 
+        } #if -all or if no parameter passed, default to all VMs
+        elseif ($psCmdlet.ParameterSetName  -like 'All' )
         {
             #get all machines
             Write-Verbose -Message 'Getting all virtual machines'
             $vmachines = $vbox.Machines
         }
-        Else 
+
+        #filter VMs by state, regardless of if -name or -all
+        if ($State) 
         {
             Write-Verbose -Message "Getting virtual machines with a state of $State"
 
@@ -210,6 +225,7 @@ function Get-VirtualBoxMachine
                     Description = $vmachine.description
                     ID          = $vmachine.ID
                     OS          = $vmachine.OSTypeID
+                    CPUCount    = $vmachine.CPUCount
                     MemoryMB    = $vmachine.MemorySize
                 }
                 if ($IncludeRaw) 

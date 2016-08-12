@@ -1,6 +1,6 @@
 ﻿# this is a Pester test file
 
-Import-Module -Name $env:VirtualBoxModule -Verbose
+Import-Module -Name $env:VirtualBoxModule 
 # describes the function Get-VirtualBox
 Describe -Name 'Get-VirtualBox' -Fixture {
 
@@ -28,30 +28,57 @@ Describe 'Get-VirtualBoxMachine' {
 
   # scenario 1: call the function without arguments
   Context 'Running without arguments'   {
-    # test 1: it does not throw an exception:
-    It 'runs throws an error' {
-      # Gotcha: to use the "Should Not Throw" assertion,
-      # make sure you place the command in a 
-      # scriptblock (braces):
-      { Get-VirtualBoxMachine } | Should Throw
+     # test 1: it does not throw an exception:
+     It 'should run without error' {
+      #  
+      { Get-VirtualBoxMachine } | Should not throw
     }
-    It 'does something' {
-      # call function Get-VirtualBoxMachine and pipe the result to an assertion
-      # Example:
-      # Get-VirtualBoxMachine | Should Be 'Expected Output'
-      # Hint: 
-      # Once you typed "Should", press CTRL+J to see
-      # available code snippets. You can also click anywhere
-      # inside a "Should" and press CTRL+J to change assertion.
-      # However, make sure the module "Pester" is
-      # loaded to see the snippets. If the module is not loaded yet,
-      # no snippets will show.
+    #test system should always have VMs running, so objects should be returned
+    It 'defaults to use -all, so should return objects' {
+      $(Get-VirtualBoxMachine).gettype().name | Should be 'object[]'      
     }
-    # test 2: it returns nothing ($null):
-    It 'does not return anything'     {
-      Get-VirtualBoxMachine | Should BeNullOrEmpty 
+    
+  }
+  #scenario 2: use -all parameter set
+  Context 'Running with -all'   {
+     # test 1: it does not throw an exception:
+     It 'should run without error' {
+      #  
+      { Get-VirtualBoxMachine -all} | Should not throw
+    }
+    #test system should always have VMs, so objects should be returned
+    It 'returns all VMs' {
+      (Get-VirtualBoxMachine -all).count -eq ((Get-Virtualbox).machines.count) | Should be  $True     
+    }
+    
+    #the 'vmUbuntu' should be only running VM in test
+    It 'only return a single running vm' {
+      (Get-VirtualBoxMachine -all -state Running).name  | Should be 'vmUbuntu'
+    }
+  }
+
+  #scenario 3: use -name parameter set
+  Context 'Running with -name'   {
+     # test 1: it does not throw an exception:
+     It 'should run throw an error when no name is specified' {
+      #  
+      { Get-VirtualBoxMachine -name } | Should  throw
+    }
+    #test system should always have VMs, so objects should be returned
+    It 'returns a single VM when a name is passed' {
+      (Get-VirtualBoxMachine -name 'vmUbuntu').name -like 'vmUbuntu'  | Should be  $True     
+    }
+    
+    #throw an exception if no machine matching criteria is found
+    It 'should throw an error with an invalid name is passed' {
+      {Get-VirtualBoxMachine -name 'doesnotexist'} | Should  throw 
+    }
+
+    #test system should always have VMs, so objects should be returned
+    It 'return return multiple VMs' {
+      (Get-VirtualBoxMachine -name  'vmUbuntu', 'vm2012-01'  ).count -eq 2 | Should be  $True     
     }
   }
 }
 
-Remove-Module VirtualBox
+Remove-Module VirtualBox 
